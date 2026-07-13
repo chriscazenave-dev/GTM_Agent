@@ -33,15 +33,16 @@ export default function NewsOfTheDay() {
   const [windowDays, setWindowDays] = useState<number>(30);
   const [accountFilter, setAccountFilter] = useState<string>("all");
   const [execOnly, setExecOnly] = useState(false);
+  const [now] = useState(() => Date.now());
 
   const filtered = useMemo(() => {
-    const cutoff = Date.now() - windowDays * 24 * 60 * 60 * 1000;
+    const cutoff = now - windowDays * 24 * 60 * 60 * 1000;
     return news
       .filter((n) => new Date(n.date).getTime() >= cutoff)
       .filter((n) => accountFilter === "all" || n.accountId === accountFilter)
       .filter((n) => !execOnly || n.category === "linkedin-post" || n.category === "exec-move")
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [news, windowDays, accountFilter, execOnly]);
+  }, [news, windowDays, accountFilter, execOnly, now]);
 
   const accountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? "Unknown";
 
