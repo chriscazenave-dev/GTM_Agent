@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   ArrowLeft, ExternalLink, Plus, Trash2, Briefcase, X, StickyNote, LayoutGrid, GripVertical,
+  Phone, Mail, Swords, LineChart, Handshake,
 } from "lucide-react";
 import LinkedInIcon from "@/components/LinkedInIcon";
 import { useStore, uid } from "@/lib/store";
-import { OrgPerson, PersonNote } from "@/lib/types";
+import { OrgPerson, PersonNote, PersonRole, RelationshipStrength, CompetitorIntel, AccountIntel } from "@/lib/types";
 import PageHeader from "@/components/PageHeader";
 
 const CARD_W = 224;
@@ -25,6 +26,45 @@ const layerStyles: Record<number, { name: string; box: string; nameCls: string; 
   5: { name: "Director / VP", box: "bg-orange-50 border-orange-400", nameCls: "text-orange-950" },
   6: { name: "AVP / Sr Manager", box: "bg-violet-50 border-violet-400", nameCls: "text-violet-950" },
 };
+
+const roleStyles: Record<PersonRole, { label: string; badge: string; ring: string }> = {
+  champion: { label: "Champion", badge: "bg-emerald-600 text-white", ring: "ring-2 ring-emerald-500" },
+  "economic-buyer": { label: "Econ Buyer", badge: "bg-amber-500 text-white", ring: "ring-2 ring-amber-400" },
+  blocker: { label: "Blocker", badge: "bg-rose-600 text-white", ring: "ring-2 ring-rose-500" },
+  neutral: { label: "Neutral", badge: "bg-gray-400 text-white", ring: "" },
+};
+
+const relLevels: { id: RelationshipStrength; label: string; bars: number }[] = [
+  { id: "none", label: "Never met", bars: 0 },
+  { id: "met", label: "Met once", bars: 1 },
+  { id: "engaged", label: "Engaged", bars: 2 },
+  { id: "strong", label: "Strong", bars: 3 },
+];
+
+function initials(name: string): string {
+  return name
+    .replace(/^TBD\s*[—-]\s*/, "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("") || "?";
+}
+
+function RelBars({ level, dark }: { level: RelationshipStrength | undefined; dark?: boolean }) {
+  const bars = relLevels.find((r) => r.id === (level ?? "none"))?.bars ?? 0;
+  return (
+    <span className="inline-flex items-end gap-[2px]" title={`Relationship: ${relLevels.find((r) => r.id === (level ?? "none"))?.label}`}>
+      {[1, 2, 3].map((i) => (
+        <span
+          key={i}
+          className={`w-[3px] rounded-sm ${i <= bars ? "bg-sky-500" : dark ? "bg-white/25" : "bg-gray-200"}`}
+          style={{ height: 3 + i * 3 }}
+        />
+      ))}
+    </span>
+  );
+}
 
 const emptyForm = { name: "", title: "", layer: 4 as OrgPerson["layer"], reportsTo: "", linkedinUrl: "", focusArea: "" };
 
@@ -89,7 +129,8 @@ function computeAutoLayout(people: OrgPerson[]): LayoutResult {
 
 export default function OrgChartDetail() {
   const params = useParams<{ accountId: string }>();
-  const { accounts, orgPeople, projects, update, hydrated } = useStore();
+  const { accounts, orgPeople, projects, intel, update, hydrated } = useStore();
+  const [compDraft, setCompDraft] = useState({ name: "", angle: "" });
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -112,6 +153,23 @@ export default function OrgChartDetail() {
   );
   const accountProjects = projects.filter((p) => p.accountId === params.accountId);
   const connections = people.filter((p) => p.projectConnection);
+  const accountIntel = intel.find((x) => x.accountId === params.accountId);
+
+  // Email-pattern inference: derive the account's pattern from any known email (Apollo enrichment can replace this later).
+  const emailHint = useMemo(() => {
+    const sample = people.find((p) => p.email?.includes("@"));
+    if (!sample?.email) return account ? `e.g. jsmith@${account.domain}` : "Email";
+    const [local, domain] = sample.email.split("@");
+    const parts = sample.name.trim().toLowerCase().split(/\s+/);
+    const first = parts[0] ?? "";
+    const last = parts[parts.length - 1] ?? "";
+    let pattern = local;
+    if (local === `${first}.${last}`) pattern = "first.last";
+    else if (local === `${first[0]}${last}`) pattern = "flast";
+    else if (local === first) pattern = "first";
+    else if (local === `${first}${last}`) pattern = "firstlast";
+    return `Pattern: ${pattern}@${domain}`;
+  }, [people, account]);
 
   const layout = useMemo(() => computeAutoLayout(people), [people]);
 
@@ -193,6 +251,16 @@ export default function OrgChartDetail() {
     const p = people.find((x) => x.id === personId);
     if (!p) return;
     patchPerson(personId, { meetingNotes: (p.meetingNotes ?? []).filter((n) => n.id !== noteId) });
+  };
+
+  const patchIntel = (patch: Partial<AccountIntel>) => {
+    if (!account) return;
+    const existing = intel.find((x) => x.accountId === account.id);
+    update({
+      intel: existing
+        ? intel.map((x) => (x.accountId === account.id ? { ...x, ...patch } : x))
+        : [...intel, { accountId: account.id, ...patch }],
+    });
   };
 
   const resetLayout = () => {
@@ -346,12 +414,23 @@ export default function OrgChartDetail() {
                     onPointerUp={(e) => onPointerUp(e, p)}
                     className={`absolute rounded-xl border-2 p-3 select-none touch-none cursor-grab active:cursor-grabbing ${style.box} ${
                       isDragging ? "shadow-xl z-20 opacity-95" : "z-10"
-                    } ${selectedId === p.id ? "ring-2 ring-sky-400 ring-offset-1" : ""}`}
+                    } ${selectedId === p.id ? "ring-2 ring-sky-400 ring-offset-1" : p.role && p.role !== "neutral" ? `${roleStyles[p.role].ring} ring-offset-1` : ""}`}
                     style={{ left: pos.x, top: pos.y, width: CARD_W, height: CARD_H }}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className={`font-black text-[13px] leading-tight truncate ${style.nameCls}`}>{p.name}</div>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {p.photoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.photoUrl} alt="" className="w-6 h-6 rounded-full object-cover shrink-0 border border-white/60" />
+                        ) : (
+                          <span className={`w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[9px] font-black ${style.dark ? "bg-white/20 text-white" : "bg-gray-200 text-gray-600"}`}>
+                            {initials(p.name)}
+                          </span>
+                        )}
+                        <div className={`font-black text-[13px] leading-tight truncate ${style.nameCls}`}>{p.name}</div>
+                      </div>
                       <div className="flex items-center gap-1.5 shrink-0">
+                        <RelBars level={p.relationship} dark={style.dark} />
                         {noteCount > 0 && (
                           <span className={`inline-flex items-center gap-0.5 text-[9px] font-bold px-1 py-0.5 rounded ${style.dark ? "bg-white/20 text-white" : "bg-amber-100 text-amber-900"}`}>
                             <StickyNote size={9} /> {noteCount}
@@ -364,6 +443,11 @@ export default function OrgChartDetail() {
                     <div className={`text-[10px] mt-1 truncate ${style.dark ? "text-gray-400" : "text-gray-400"}`}>
                       {p.focusArea ?? `Reports to: ${managerName(p.reportsTo)}`}
                     </div>
+                    {p.role && (
+                      <span className={`absolute bottom-1.5 left-2 text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${roleStyles[p.role].badge}`}>
+                        {roleStyles[p.role].label}
+                      </span>
+                    )}
                     {p.addedManually && (
                       <span className="absolute bottom-1.5 right-2 text-[8px] font-bold uppercase bg-sky-100 text-sky-800 px-1 py-0.5 rounded">you added</span>
                     )}
@@ -387,7 +471,6 @@ export default function OrgChartDetail() {
             <div className="mt-3 space-y-1.5 text-xs text-gray-600">
               {selected.focusArea && <div><span className="font-bold text-gray-500">Focus:</span> {selected.focusArea}</div>}
               {selected.detail && <div><span className="font-bold text-gray-500">Detail:</span> {selected.detail}</div>}
-              {selected.email && <div><span className="font-bold text-gray-500">Email:</span> {selected.email} {selected.emailStatus && <span className="text-gray-400">({selected.emailStatus})</span>}</div>}
               {selected.projectConnection && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 text-amber-900 text-[11px]">
                   <Briefcase size={10} className="inline mr-1" />
@@ -404,6 +487,72 @@ export default function OrgChartDetail() {
                   <LinkedInIcon size={12} /> LinkedIn profile
                 </a>
               )}
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Role in deal</label>
+                <select
+                  value={selected.role ?? ""}
+                  onChange={(e) => patchPerson(selected.id, { role: (e.target.value || undefined) as PersonRole | undefined })}
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white"
+                >
+                  <option value="">Untagged</option>
+                  <option value="champion">Champion</option>
+                  <option value="economic-buyer">Economic buyer</option>
+                  <option value="neutral">Neutral</option>
+                  <option value="blocker">Blocker</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Relationship</label>
+                <select
+                  value={selected.relationship ?? "none"}
+                  onChange={(e) => patchPerson(selected.id, { relationship: e.target.value as RelationshipStrength })}
+                  className="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white"
+                >
+                  {relLevels.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Mail size={12} className="text-gray-400 shrink-0" />
+                <input
+                  value={selected.email ?? ""}
+                  onChange={(e) => patchPerson(selected.id, { email: e.target.value || undefined })}
+                  placeholder={emailHint}
+                  className="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-gray-500"
+                />
+              </div>
+              {selected.emailStatus && <div className="text-[10px] text-gray-400 ml-5">({selected.emailStatus})</div>}
+              <div className="flex items-center gap-2">
+                <Phone size={12} className="text-gray-400 shrink-0" />
+                <input
+                  value={selected.phone ?? ""}
+                  onChange={(e) => patchPerson(selected.id, { phone: e.target.value || undefined })}
+                  placeholder="Phone"
+                  className="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-gray-500"
+                />
+              </div>
+              <input
+                value={selected.photoUrl ?? ""}
+                onChange={(e) => patchPerson(selected.id, { photoUrl: e.target.value || undefined })}
+                placeholder="Photo URL (e.g. LinkedIn avatar)"
+                className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-gray-500"
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-gray-500">
+                  Last touched: {selected.lastTouched ? new Date(selected.lastTouched).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "never"}
+                </span>
+                <button
+                  onClick={() => patchPerson(selected.id, { lastTouched: new Date().toISOString() })}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border border-gray-300 text-gray-600 hover:border-gray-500"
+                >
+                  <Handshake size={11} /> Touched today
+                </button>
+              </div>
             </div>
 
             <div className="mt-4">
@@ -536,6 +685,88 @@ export default function OrgChartDetail() {
           </div>
         </div>
       )}
+
+      <div className="mt-10 max-w-6xl">
+        <h2 className="text-lg font-black text-gray-900 mb-1">Account Intelligence</h2>
+        <p className="text-xs text-gray-500 mb-3">Earnings takeaways, pain hypotheses, and who else is in the deal. All editable — keep it current as you learn.</p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-white border border-gray-200 rounded-xl p-5">
+            <div className="flex items-center gap-1.5 mb-2">
+              <LineChart size={13} className="text-emerald-700" />
+              <span className="text-xs font-black text-gray-900">Earnings / 10-K summary</span>
+            </div>
+            <textarea
+              value={accountIntel?.earningsSummary ?? ""}
+              onChange={(e) => patchIntel({ earningsSummary: e.target.value })}
+              placeholder="Key takeaways from the latest earnings call or 10-K…"
+              rows={4}
+              className="w-full border border-gray-300 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:border-gray-500"
+            />
+            <div className="flex items-center gap-1.5 mt-3 mb-2">
+              <Briefcase size={13} className="text-amber-700" />
+              <span className="text-xs font-black text-gray-900">Pain hypotheses</span>
+            </div>
+            <textarea
+              value={accountIntel?.painHypotheses ?? ""}
+              onChange={(e) => patchIntel({ painHypotheses: e.target.value })}
+              placeholder="Where does Devin attach? One hypothesis per line…"
+              rows={4}
+              className="w-full border border-gray-300 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:border-gray-500"
+            />
+          </div>
+          <div className="bg-white border border-gray-200 rounded-xl p-5">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Swords size={13} className="text-rose-700" />
+              <span className="text-xs font-black text-gray-900">Competitive intel</span>
+            </div>
+            <div className="space-y-2">
+              {(accountIntel?.competitors ?? []).map((c) => (
+                <div key={c.id} className="border border-gray-200 rounded-lg px-3 py-2 group">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-900">{c.name}</span>
+                    <button
+                      onClick={() => patchIntel({ competitors: (accountIntel?.competitors ?? []).filter((x) => x.id !== c.id) })}
+                      className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-rose-600"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                  <div className="text-[11px] text-gray-600 mt-0.5">{c.angle}</div>
+                </div>
+              ))}
+              {(accountIntel?.competitors ?? []).length === 0 && (
+                <div className="text-[11px] text-gray-400">No competitors logged. If you don&apos;t know who else is in the deal, that&apos;s a risk.</div>
+              )}
+            </div>
+            <div className="mt-3 space-y-2">
+              <input
+                value={compDraft.name}
+                onChange={(e) => setCompDraft({ ...compDraft, name: e.target.value })}
+                placeholder="Competitor name"
+                className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-gray-500"
+              />
+              <input
+                value={compDraft.angle}
+                onChange={(e) => setCompDraft({ ...compDraft, angle: e.target.value })}
+                placeholder="Displacement angle — how we win against them"
+                className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-gray-500"
+              />
+              <button
+                onClick={() => {
+                  if (!compDraft.name.trim()) return;
+                  const c: CompetitorIntel = { id: uid("comp"), name: compDraft.name.trim(), angle: compDraft.angle.trim() };
+                  patchIntel({ competitors: [...(accountIntel?.competitors ?? []), c] });
+                  setCompDraft({ name: "", angle: "" });
+                }}
+                disabled={!compDraft.name.trim()}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-900 text-white hover:bg-gray-700 disabled:opacity-40"
+              >
+                Add competitor
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

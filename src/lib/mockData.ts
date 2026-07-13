@@ -1,5 +1,6 @@
 import {
   Account,
+  AccountIntel,
   Opportunity,
   NewsItem,
   OrgPerson,
@@ -25,10 +26,77 @@ export const seedAccounts: Account[] = [
 ];
 
 export const seedOpportunities: Opportunity[] = [
-  { id: "opp-1", accountId: "acc-relativity", name: "Relativity — Devin Enterprise (aiR eng org)", stage: "Evaluation", amount: "$480K", closeDate: "2026-09-30", nextStep: "Security review with platform team" },
-  { id: "opp-2", accountId: "acc-backblaze", name: "Backblaze — Devin Teams (B2 platform)", stage: "Technical Validation", amount: "$220K", closeDate: "2026-08-15", nextStep: "Pilot results readout w/ VP Eng" },
-  { id: "opp-3", accountId: "acc-r365", name: "Restaurant365 — Devin Pilot", stage: "Pilot Scoping", amount: "$350K", closeDate: "2026-10-31", nextStep: "Scope backlog use cases with eng leads" },
-  { id: "opp-4", accountId: "acc-liveramp", name: "LiveRamp — Devin Pilot", stage: "Pilot Scoping", amount: "$400K", closeDate: "2026-09-15", nextStep: "Align pilot success criteria with CTO office" },
+  {
+    id: "opp-1", accountId: "acc-relativity", name: "Relativity — Devin Enterprise (aiR eng org)", stage: "Evaluation", amount: "$480K", closeDate: "2026-09-30", nextStep: "Security review with platform team",
+    forecastCategory: "best-case",
+    stageHistory: [
+      { stage: "Discovery", date: daysAgo(75) },
+      { stage: "Pilot Scoping", date: daysAgo(48) },
+      { stage: "Evaluation", date: daysAgo(20) },
+    ],
+    nextSteps: [
+      { id: "ns-1a", text: "Security review with platform team", done: false, due: "2026-07-24" },
+      { id: "ns-1b", text: "Send pilot ROI summary to Keith", done: true },
+    ],
+    meddpicc: {
+      metrics: "30% of platform eng time on maintenance; pilot showed 22 PRs merged async in 3 weeks",
+      champion: "Keith Carlson (CTO) — publicly bought in on agents",
+      identifiedPain: "EU expansion + platform modernization competing for the same engineers",
+      competition: "Cursor enterprise eval running in parallel",
+    },
+    map: [
+      { id: "map-1a", title: "Pilot readout with eng leadership", owner: "us", due: "2026-07-20", done: true },
+      { id: "map-1b", title: "Security review sign-off", owner: "customer", due: "2026-08-01", done: false },
+      { id: "map-1c", title: "Commercial proposal to procurement", owner: "us", due: "2026-08-15", done: false },
+    ],
+    lastActivity: daysAgo(3),
+  },
+  {
+    id: "opp-2", accountId: "acc-backblaze", name: "Backblaze — Devin Teams (B2 platform)", stage: "Technical Validation", amount: "$220K", closeDate: "2026-08-15", nextStep: "Pilot results readout w/ VP Eng",
+    forecastCategory: "commit",
+    stageHistory: [
+      { stage: "Discovery", date: daysAgo(60) },
+      { stage: "Technical Validation", date: daysAgo(25) },
+    ],
+    nextSteps: [{ id: "ns-2a", text: "Pilot results readout w/ VP Eng", done: false, due: "2026-07-17" }],
+    meddpicc: {
+      champion: "Laura Chen (VP Platform Eng)",
+      identifiedPain: "Drive-fleet maintenance eating reliability roadmap",
+    },
+    lastActivity: daysAgo(1),
+  },
+  {
+    id: "opp-3", accountId: "acc-r365", name: "Restaurant365 — Devin Pilot", stage: "Pilot Scoping", amount: "$350K", closeDate: "2026-10-31", nextStep: "Scope backlog use cases with eng leads",
+    forecastCategory: "pipeline",
+    stageHistory: [{ stage: "Pilot Scoping", date: daysAgo(30) }],
+    nextSteps: [{ id: "ns-3a", text: "Scope backlog use cases with eng leads", done: false }],
+    lastActivity: daysAgo(18),
+  },
+  {
+    id: "opp-4", accountId: "acc-liveramp", name: "LiveRamp — Devin Pilot", stage: "Pilot Scoping", amount: "$400K", closeDate: "2026-09-15", nextStep: "Align pilot success criteria with CTO office",
+    forecastCategory: "best-case",
+    stageHistory: [{ stage: "Pilot Scoping", date: daysAgo(22) }],
+    nextSteps: [{ id: "ns-4a", text: "Align pilot success criteria with CTO office", done: false, due: "2026-07-18" }],
+    meddpicc: { identifiedPain: "Identity infra migration with flat headcount" },
+    lastActivity: daysAgo(6),
+  },
+];
+
+export const seedIntel: AccountIntel[] = [
+  {
+    accountId: "acc-relativity",
+    earningsSummary: "Private; investor updates emphasize aiR revenue growth and EU expansion. Hiring data shows Krakow hub scaling while US platform headcount is flat — classic do-more-with-less setup.",
+    painHypotheses: "1) EU data residency work is pulling platform engineers off the aiR roadmap. 2) Legacy Server → RelativityOne migration is a multi-year tax. 3) QA automation gap flagged in eng blog posts.",
+    competitors: [
+      { id: "comp-1a", name: "Cursor (enterprise)", angle: "IDE assistant, not autonomous — position Devin on async backlog execution, not autocomplete." },
+    ],
+  },
+  {
+    accountId: "acc-backblaze",
+    earningsSummary: "Public (BLZE). Last call: B2 revenue +27% YoY, gross margin pressure from AI storage buildout, explicit 'operational efficiency' language from CFO.",
+    painHypotheses: "1) CoreWeave capacity buildout strains platform team. 2) Drive-fleet software maintenance is unglamorous, constant, and measurable — ideal Devin wedge.",
+    competitors: [],
+  },
 ];
 
 export const seedNews: NewsItem[] = [
@@ -49,10 +117,10 @@ export const seedNews: NewsItem[] = [
 export const seedOrgPeople: OrgPerson[] = [
   // Relativity — 6 layers
   { id: "p-rel-1", accountId: "acc-relativity", name: "Phil Saunders", title: "CEO", layer: 1, reportsTo: null, linkedinUrl: "https://www.linkedin.com/in/phil-saunders", focusArea: "Company strategy" },
-  { id: "p-rel-2", accountId: "acc-relativity", name: "Keith Carlson", title: "CTO", layer: 2, reportsTo: "p-rel-1", linkedinUrl: "https://www.linkedin.com/company/relativity/", focusArea: "All engineering, aiR platform", detail: "Ex-AWS", projectConnection: "Publicly championing agentic AI in e-discovery", evidenceUrl: "https://www.linkedin.com/company/relativity/" },
+  { id: "p-rel-2", accountId: "acc-relativity", name: "Keith Carlson", title: "CTO", layer: 2, reportsTo: "p-rel-1", linkedinUrl: "https://www.linkedin.com/company/relativity/", focusArea: "All engineering, aiR platform", detail: "Ex-AWS", projectConnection: "Publicly championing agentic AI in e-discovery", evidenceUrl: "https://www.linkedin.com/company/relativity/", role: "champion", relationship: "engaged", lastTouched: daysAgo(5) },
   { id: "p-rel-3", accountId: "acc-relativity", name: "Anita Rao", title: "SVP Engineering, RelativityOne", layer: 3, reportsTo: "p-rel-2", focusArea: "Core SaaS platform", detail: "8 yrs at Relativity" },
   { id: "p-rel-4", accountId: "acc-relativity", name: "Marek Nowak", title: "SVP Engineering, Krakow", layer: 3, reportsTo: "p-rel-2", focusArea: "EMEA engineering hub", detail: "Leads 300+ engineers" },
-  { id: "p-rel-5", accountId: "acc-relativity", name: "David Kim", title: "VP Platform Engineering", layer: 4, reportsTo: "p-rel-3", focusArea: "Infra, CI/CD, developer experience", projectConnection: "Owns EU data center expansion for aiR", evidenceUrl: "https://www.relativity.com/company/newsroom/" },
+  { id: "p-rel-5", accountId: "acc-relativity", name: "David Kim", title: "VP Platform Engineering", layer: 4, reportsTo: "p-rel-3", focusArea: "Infra, CI/CD, developer experience", projectConnection: "Owns EU data center expansion for aiR", evidenceUrl: "https://www.relativity.com/company/newsroom/", role: "neutral", relationship: "met", lastTouched: daysAgo(12) },
   { id: "p-rel-6", accountId: "acc-relativity", name: "Sara Whitman", title: "VP AI Engineering", layer: 4, reportsTo: "p-rel-2", focusArea: "aiR for Review models & serving" },
   { id: "p-rel-7", accountId: "acc-relativity", name: "Tom Beckett", title: "Director, Developer Productivity", layer: 5, reportsTo: "p-rel-5", focusArea: "Build systems, internal tooling", emailStatus: "pattern-derived", email: "tbeckett@relativity.com" },
   { id: "p-rel-8", accountId: "acc-relativity", name: "Ewa Kaczmarek", title: "Director, Quality Engineering", layer: 5, reportsTo: "p-rel-4", focusArea: "Test automation across RelativityOne" },
@@ -60,7 +128,7 @@ export const seedOrgPeople: OrgPerson[] = [
   // Backblaze
   { id: "p-bb-1", accountId: "acc-backblaze", name: "Gleb Budman", title: "CEO", layer: 1, reportsTo: null, linkedinUrl: "https://www.linkedin.com/in/glebbudman", focusArea: "Co-founder" },
   { id: "p-bb-2", accountId: "acc-backblaze", name: "Siva Kumar", title: "CTO", layer: 2, reportsTo: "p-bb-1", focusArea: "B2 platform, storage engineering" },
-  { id: "p-bb-3", accountId: "acc-backblaze", name: "Laura Chen", title: "VP Platform Engineering", layer: 4, reportsTo: "p-bb-2", focusArea: "Drive fleet software, reliability", projectConnection: "SREcon talk on shard-level reliability tooling", evidenceUrl: "https://www.usenix.org/srecon" },
+  { id: "p-bb-3", accountId: "acc-backblaze", name: "Laura Chen", title: "VP Platform Engineering", layer: 4, reportsTo: "p-bb-2", focusArea: "Drive fleet software, reliability", projectConnection: "SREcon talk on shard-level reliability tooling", evidenceUrl: "https://www.usenix.org/srecon", role: "champion", relationship: "strong", lastTouched: daysAgo(2) },
   { id: "p-bb-4", accountId: "acc-backblaze", name: "Marcus Lee", title: "Director, Storage Engineering", layer: 5, reportsTo: "p-bb-3", focusArea: "Vault architecture" },
   // BILL
   { id: "p-bill-1", accountId: "acc-bill", name: "René Lacerte", title: "CEO", layer: 1, reportsTo: null, linkedinUrl: "https://www.linkedin.com/in/renelacerte", focusArea: "Founder" },

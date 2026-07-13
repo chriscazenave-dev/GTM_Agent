@@ -2,11 +2,11 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import {
-  Account, Opportunity, NewsItem, OrgPerson, EngProject, SuggestedEmail,
+  Account, AccountIntel, Opportunity, NewsItem, OrgPerson, EngProject, SuggestedEmail,
   OnboardingState, ApiKeys,
 } from "./types";
 import {
-  seedAccounts, seedOpportunities, seedNews, seedOrgPeople, seedProjects, seedEmails,
+  seedAccounts, seedOpportunities, seedNews, seedOrgPeople, seedProjects, seedEmails, seedIntel,
 } from "./mockData";
 
 const LS_KEY = "gtm-agent-store-v1";
@@ -18,6 +18,7 @@ interface StoreData {
   orgPeople: OrgPerson[];
   projects: EngProject[];
   emails: SuggestedEmail[];
+  intel: AccountIntel[];
   onboarding: OnboardingState;
   apiKeys: ApiKeys;
   writingLearnings: string[];
@@ -30,6 +31,7 @@ const defaultData: StoreData = {
   orgPeople: seedOrgPeople,
   projects: seedProjects,
   emails: seedEmails,
+  intel: seedIntel,
   onboarding: { completed: false, answers: [] },
   apiKeys: {},
   writingLearnings: [],

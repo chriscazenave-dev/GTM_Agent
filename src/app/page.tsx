@@ -4,11 +4,11 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ExternalLink, TrendingUp, Rocket, Users, UserPlus, Wrench,
-  DollarSign, Handshake, Sparkles,
+  DollarSign, Handshake, Sparkles, UserMinus, RefreshCw, BellRing,
 } from "lucide-react";
 import LinkedInIcon from "@/components/LinkedInIcon";
-import { useStore } from "@/lib/store";
-import { NewsCategory } from "@/lib/types";
+import { useStore, uid } from "@/lib/store";
+import { NewsCategory, NewsItem } from "@/lib/types";
 import PageHeader from "@/components/PageHeader";
 
 const windows = [
@@ -25,15 +25,49 @@ const categoryMeta: Record<NewsCategory, { label: string; icon: React.ComponentT
   engineering: { label: "Engineering", icon: Wrench, classes: "bg-slate-200 text-slate-800" },
   "linkedin-post": { label: "Exec LinkedIn Post", icon: LinkedInIcon, classes: "bg-sky-100 text-sky-800" },
   earnings: { label: "Earnings", icon: TrendingUp, classes: "bg-emerald-100 text-emerald-800" },
+  layoffs: { label: "Layoffs", icon: UserMinus, classes: "bg-rose-100 text-rose-800" },
   partnership: { label: "Partnership", icon: Handshake, classes: "bg-orange-100 text-orange-800" },
 };
 
+const signalCategories: NewsCategory[] = ["exec-move", "funding", "layoffs", "engineering"];
+
 export default function NewsOfTheDay() {
-  const { news, accounts, hydrated } = useStore();
+  const { news, accounts, apiKeys, update, hydrated } = useStore();
   const [windowDays, setWindowDays] = useState<number>(30);
   const [accountFilter, setAccountFilter] = useState<string>("all");
   const [execOnly, setExecOnly] = useState(false);
   const [now] = useState(() => Date.now());
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMsg, setRefreshMsg] = useState("");
+
+  const refreshResearch = async () => {
+    setRefreshing(true);
+    setRefreshMsg("");
+    try {
+      const res = await fetch("/api/research", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          exaKey: apiKeys.exa,
+          accounts: accounts.map((a) => ({ id: a.id, name: a.name, domain: a.domain })),
+        }),
+      });
+      const data: { ok: boolean; message?: string; items?: Omit<NewsItem, "id">[] } = await res.json();
+      if (!data.ok) {
+        setRefreshMsg(data.message ?? "Research unavailable.");
+      } else {
+        const existing = new Set(news.map((n) => n.url));
+        const fresh: NewsItem[] = (data.items ?? [])
+          .filter((i) => !existing.has(i.url))
+          .map((i) => ({ ...i, id: uid("news") }));
+        update({ news: [...fresh, ...news] });
+        setRefreshMsg(fresh.length > 0 ? `Added ${fresh.length} new item${fresh.length > 1 ? "s" : ""} from live research.` : "No new items found — you're up to date.");
+      }
+    } catch {
+      setRefreshMsg("Research request failed. Check your connection and Exa key.");
+    }
+    setRefreshing(false);
+  };
 
   const filtered = useMemo(() => {
     const cutoff = now - windowDays * 24 * 60 * 60 * 1000;
@@ -46,6 +80,11 @@ export default function NewsOfTheDay() {
 
   const accountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? "Unknown";
 
+  const signals = useMemo(() => {
+    const cutoff = now - 7 * 24 * 60 * 60 * 1000;
+    return news.filter((n) => signalCategories.includes(n.category) && new Date(n.date).getTime() >= cutoff);
+  }, [news, now]);
+
   if (!hydrated) return null;
 
   return (
@@ -53,7 +92,32 @@ export default function NewsOfTheDay() {
       <PageHeader
         title="News of the Day"
         subtitle={`Deep research across your ${accounts.length} accounts. No ocean boiling, just signal.`}
-      />
+      >
+        <button
+          onClick={refreshResearch}
+          disabled={refreshing}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold bg-gray-900 text-white hover:bg-gray-700 disabled:opacity-50"
+        >
+          <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} /> {refreshing ? "Researching…" : "Refresh research"}
+        </button>
+      </PageHeader>
+
+      {refreshMsg && (
+        <div className="mb-4 text-xs text-gray-600 bg-gray-100 border border-gray-200 rounded-lg px-3 py-2">{refreshMsg}</div>
+      )}
+
+      {signals.length > 0 && (
+        <div className="mb-4 flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">
+          <BellRing size={14} className="text-rose-600 mt-0.5 shrink-0" />
+          <div className="text-xs text-rose-900">
+            <span className="font-black">{signals.length} signal{signals.length > 1 ? "s" : ""} this week: </span>
+            {signals.slice(0, 3).map((s, i) => (
+              <span key={s.id}>{i > 0 && " · "}{accountName(s.accountId)} — {categoryMeta[s.category].label.toLowerCase()}</span>
+            ))}
+            {signals.length > 3 && ` · +${signals.length - 3} more below`}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 mb-6">
         {windows.map((w) => (
