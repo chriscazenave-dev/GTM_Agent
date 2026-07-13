@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Network, Users, Briefcase, ChevronRight } from "lucide-react";
+import { Network, Users, Briefcase, ChevronRight, Plus } from "lucide-react";
 import { useStore } from "@/lib/store";
 import PageHeader from "@/components/PageHeader";
 
@@ -15,7 +15,14 @@ export default function OrgChartsIndex() {
       <PageHeader
         title="Org Charts"
         subtitle="Deep-wiki for the people side of every account. Six layers deep, from CEO to senior manager."
-      />
+      >
+        <Link
+          href="/accounts/new"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold bg-gray-900 text-white hover:bg-gray-700"
+        >
+          <Plus size={13} /> Add account manually
+        </Link>
+      </PageHeader>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {accounts.map((a) => {

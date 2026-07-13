@@ -50,6 +50,12 @@ export interface NewsItem {
   whyItMatters: string;
 }
 
+export interface PersonNote {
+  id: string;
+  date: string; // ISO
+  text: string;
+}
+
 export interface OrgPerson {
   id: string;
   accountId: string;
@@ -65,6 +71,8 @@ export interface OrgPerson {
   projectConnection?: string;
   evidenceUrl?: string;
   addedManually?: boolean;
+  pos?: { x: number; y: number }; // manual chart position override
+  meetingNotes?: PersonNote[];
 }
 
 export interface EngProject {
