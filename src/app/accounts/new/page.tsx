@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Building2, Plus, Trash2, Network } from "lucide-react";
 import { useStore, uid } from "@/lib/store";
-import { Account, AccountType, OrgPerson } from "@/lib/types";
+import { Account, AccountType, Opportunity, OrgPerson } from "@/lib/types";
 import PageHeader from "@/components/PageHeader";
 
 interface PersonRow {
@@ -33,7 +33,7 @@ const scaffoldTemplate: Array<{ title: string; layer: OrgPerson["layer"]; report
 
 export default function NewAccountPage() {
   const router = useRouter();
-  const { accounts, orgPeople, update, hydrated } = useStore();
+  const { accounts, orgPeople, opportunities, update, hydrated } = useStore();
 
   const [form, setForm] = useState({
     name: "", domain: "", industry: "", vertical: "", type: "pg" as AccountType,
@@ -109,7 +109,26 @@ export default function NewAccountPage() {
       addedManually: true,
     }));
 
-    update({ accounts: [...accounts, account], orgPeople: [...orgPeople, ...newPeople] });
+    const newOpps: Opportunity[] =
+      form.type === "opportunity"
+        ? [{
+            id: uid("opp"),
+            accountId,
+            name: `${account.name} — New Opportunity`,
+            stage: account.stage ?? "Discovery",
+            amount: account.amount ?? "$0",
+            closeDate: account.closeDate ?? "",
+            forecastCategory: "pipeline",
+            stageHistory: [{ stage: account.stage ?? "Discovery", date: new Date().toISOString() }],
+            lastActivity: new Date().toISOString(),
+          }]
+        : [];
+
+    update({
+      accounts: [...accounts, account],
+      orgPeople: [...orgPeople, ...newPeople],
+      opportunities: [...opportunities, ...newOpps],
+    });
     router.push(`/org-charts/${accountId}`);
   };
 

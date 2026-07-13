@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Newspaper, Mail, Network, GitBranch, Upload, Settings, Mic, Compass,
+  Newspaper, Mail, Network, GitBranch, Upload, Settings, Mic, Compass, Target,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 
 const navItems = [
   { href: "/", label: "News of the Day", icon: Newspaper },
   { href: "/suggested-pg", label: "Suggested PG", icon: Mail },
+  { href: "/deals", label: "Deals", icon: Target },
   { href: "/org-charts", label: "Org Charts", icon: Network },
   { href: "/breakdown", label: "Ops vs PG Breakdown", icon: GitBranch },
   { href: "/upload", label: "Upload Data", icon: Upload },

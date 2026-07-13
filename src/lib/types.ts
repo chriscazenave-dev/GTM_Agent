@@ -16,6 +16,38 @@ export interface Account {
   notes?: string;
 }
 
+export type ForecastCategory = "commit" | "best-case" | "pipeline";
+
+export interface StageEvent {
+  stage: string;
+  date: string; // ISO
+}
+
+export interface NextStep {
+  id: string;
+  text: string;
+  done: boolean;
+  due?: string;
+}
+
+export type MeddpiccKey =
+  | "metrics"
+  | "economicBuyer"
+  | "decisionCriteria"
+  | "decisionProcess"
+  | "paperProcess"
+  | "identifiedPain"
+  | "champion"
+  | "competition";
+
+export interface MapMilestone {
+  id: string;
+  title: string;
+  owner: "us" | "customer";
+  due?: string;
+  done: boolean;
+}
+
 export interface Opportunity {
   id: string;
   accountId: string;
@@ -24,6 +56,12 @@ export interface Opportunity {
   amount: string;
   closeDate: string;
   nextStep?: string;
+  forecastCategory?: ForecastCategory;
+  stageHistory?: StageEvent[];
+  nextSteps?: NextStep[];
+  meddpicc?: Partial<Record<MeddpiccKey, string>>;
+  map?: MapMilestone[];
+  lastActivity?: string; // ISO
 }
 
 export type NewsCategory =
@@ -34,6 +72,7 @@ export type NewsCategory =
   | "engineering"
   | "linkedin-post"
   | "earnings"
+  | "layoffs"
   | "partnership";
 
 export interface NewsItem {
@@ -49,6 +88,10 @@ export interface NewsItem {
   execTitle?: string;
   whyItMatters: string;
 }
+
+export type PersonRole = "champion" | "blocker" | "neutral" | "economic-buyer";
+
+export type RelationshipStrength = "none" | "met" | "engaged" | "strong";
 
 export interface PersonNote {
   id: string;
@@ -73,6 +116,24 @@ export interface OrgPerson {
   addedManually?: boolean;
   pos?: { x: number; y: number }; // manual chart position override
   meetingNotes?: PersonNote[];
+  role?: PersonRole;
+  relationship?: RelationshipStrength;
+  phone?: string;
+  photoUrl?: string;
+  lastTouched?: string; // ISO — last time you met/emailed them
+}
+
+export interface CompetitorIntel {
+  id: string;
+  name: string;
+  angle: string; // displacement angle
+}
+
+export interface AccountIntel {
+  accountId: string;
+  earningsSummary?: string;
+  painHypotheses?: string;
+  competitors?: CompetitorIntel[];
 }
 
 export interface EngProject {
